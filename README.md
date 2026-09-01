@@ -14,6 +14,8 @@ liquidity, and turnover, predict the sign of its next-day return.
 ## Files
 
 - `docs/challenge.md`: challenge statement, metric, and column reference
+- `notebooks/eda.ipynb`: structure, descriptive statistics, target, missingness, distributions,
+  outliers, feature/target association, train/test comparison, and grouped-CV baselines
 - `notebooks/benchmark_submission.ipynb`: benchmark notebook, updated to use the local folder
   structure (reads from `../data/raw/`, writes to `../submissions/`)
 - `data/raw/X_train.csv`: training input data (527,073 rows)
@@ -26,6 +28,48 @@ liquidity, and turnover, predict the sign of its next-day return.
 Run `uv sync`, then open `notebooks/benchmark_submission.ipynb` and run the cells. It fits a
 Ridge model and a cross-validated LightGBM model, writing both submissions to `submissions/`. The
 LightGBM model is the one scored on the public leaderboard (0.5079 accuracy).
+
+## EDA
+
+`notebooks/eda.ipynb` — sanity checks, descriptive statistics, panel structure, target balance,
+missingness, distributions, outliers, feature/target association, a train/test comparison, and
+baselines under a `TS`-grouped CV harness (no date leaks across train/val, matching the
+train/test split).
+
+| baseline | grouped-CV accuracy |
+|---|---|
+| majority class | 0.5072 ± 0.0025 |
+| sign(RET_1) | 0.5189 ± 0.0035 |
+| ridge (41 features) | 0.5201 ± 0.0017 |
+| lightgbm (41 features) | 0.5223 ± 0.0029 |
+
+Main findings:
+
+- **`RET_1` (yesterday's return) alone is most of the signal.** Its correlation with `TARGET` is
+  ~0.085, far above any other lag or `SIGNED_VOLUME_i` (all near zero); `sign(RET_1)` alone
+  already beats the published benchmark's 0.5079 public score. This is short-term continuation,
+  not mean-reversion, and it holds within every `GROUP`.
+- **`SIGNED_VOLUME_1` is missing 73.5% of the time, and it's structural, not random**: 24
+  allocations (6 per `GROUP`) always report it, the rest are missing it ~80% of the time. Worth
+  keeping as a missingness indicator rather than just imputing.
+- **`GROUP` is a fixed attribute of the allocation** (never changes across its history) and the 4
+  groups differ meaningfully in return volatility and typical turnover.
+- **The `TS` numeric suffix carries no recoverable calendar order** — checked and ruled out the
+  trick that worked on a sibling QRT challenge (`DAY_ID`/`ID`); `RET_1` doesn't correlate with the
+  previous label-adjacent row's target for the same allocation, even restricted to unit label
+  gaps.
+- **Same-day targets across allocations correlate at ~0.26** — a shared daily factor exists. Not
+  directly usable as a feature (it's built from the labels), but it's why cross-validation must
+  be grouped by `TS`, and why the benchmark's same-day average-of-past-returns features are
+  legitimate.
+- **No data-quality issues**: zero duplicate rows or keys, no constant columns, no missing
+  targets. Distributions are heavy-tailed but not corrupted — `SIGNED_VOLUME_i` has kurtosis in
+  the hundreds, `MEDIAN_DAILY_TURNOVER` is right-skewed (≈4.3) with 13% of values beyond a
+  3×IQR whisker, and `RET_1`'s extremes reach >40σ — genuine tail events, not glitches.
+- **Train and test look like the same distribution**: matching means/spreads for `RET_1`,
+  `SIGNED_VOLUME_1`, `MEDIAN_DAILY_TURNOVER`, and identical `GROUP` composition (same 278
+  allocations on both sides); only `SIGNED_VOLUME_1`'s missing rate drifts slightly (73.5% train
+  vs. 75.0% test). A `TS`-grouped CV score should transfer reasonably to the leaderboard.
 
 ## Data
 
