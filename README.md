@@ -10,6 +10,7 @@ liquidity, and turnover, predict the sign of its next-day return.
 - `docs/`: challenge statement
 - `notebooks/`: exploratory and benchmark notebooks
 - `notes/`: written investigations (e.g. hidden-structure recovery attempts)
+- `src/`: shared data loading, feature engineering, and the CV harness
 - `submissions/`: generated submission files
 
 ## Files
@@ -21,6 +22,10 @@ liquidity, and turnover, predict the sign of its next-day return.
   structure (reads from `../data/raw/`, writes to `../submissions/`)
 - `notes/date_ordering.md`: investigation into whether the true calendar order is recoverable
   from `TS` (it isn't — see below)
+- `notebooks/modeling.ipynb`: turns the EDA findings into features and checks each one under CV
+- `src/qrt_prep.py`: raw loading, feature-column constants, `TS`-grouped fold/CV harness
+- `src/qrt_features.py`: `GROUP` dummies, `SIGNED_VOLUME_1` missingness indicator, rolling return
+  stats, same-day cross-sectional features
 - `data/raw/X_train.csv`: training input data (527,073 rows)
 - `data/raw/y_train.csv`: training target data
 - `data/raw/X_test.csv`: test input data (31,870 rows)
@@ -73,6 +78,31 @@ Main findings:
   `SIGNED_VOLUME_1`, `MEDIAN_DAILY_TURNOVER`, and identical `GROUP` composition (same 278
   allocations on both sides); only `SIGNED_VOLUME_1`'s missing rate drifts slightly (73.5% train
   vs. 75.0% test). A `TS`-grouped CV score should transfer reasonably to the leaderboard.
+
+## Feature engineering
+
+`notebooks/modeling.ipynb` turns the EDA findings into features (`src/qrt_features.py`) and
+checks each one under the same `TS`-grouped CV harness (`src/qrt_prep.py`), added cumulatively
+on top of the benchmark's own 41-feature set, averaged over 2 fold-seeds (10 fold estimates per
+number):
+
+| feature set | ridge | lightgbm |
+|---|---|---|
+| baseline (benchmark features) | 0.5194 | 0.5210 |
+| + `GROUP` dummies | 0.5194 | 0.5210 |
+| + `SIGNED_VOLUME_1` missingness indicator | 0.5197 | 0.5211 |
+| + rolling return stats (`RET_MEAN_5/20`, `RET_STD_20`) | 0.5198 | **0.5212** |
+| + cross-sectional same-day features | **0.5206** | 0.5212 |
+
+Real, but small: cumulative gains top out around +0.0012 accuracy (ridge, from the
+cross-sectional features) and +0.0002–0.0004 (lightgbm, mostly from rolling stats). `GROUP` alone
+is worth essentially nothing as a raw feature — a tree model already captures most of its
+information indirectly via turnover/volatility splits, and a linear model would need it
+*interacted* with `RET_1` rather than added as an offset (not tested here). Every configuration
+already clears the published benchmark's 0.5079 public score by 1–1.4 points. LightGBM feature
+importance (gain) on the best set confirms the EDA directly in a trained model: `RET_1` is ~10x
+the next feature (`RET_MEAN_5`), `GROUP` dummies and the missingness indicator don't crack the
+top 15.
 
 ## Data
 
