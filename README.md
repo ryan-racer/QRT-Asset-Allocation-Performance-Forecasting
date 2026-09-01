@@ -23,6 +23,8 @@ liquidity, and turnover, predict the sign of its next-day return.
 - `notes/date_ordering.md`: investigation into whether the true calendar order is recoverable
   from `TS` (it isn't — see below)
 - `notebooks/modeling.ipynb`: turns the EDA findings into features and checks each one under CV
+- `notebooks/submission.ipynb`: trains the CV-selected model on the full training set and writes
+  `submissions/lightgbm_rolling_stats.csv`
 - `src/qrt_prep.py`: raw loading, feature-column constants, `TS`-grouped fold/CV harness
 - `src/qrt_features.py`: `GROUP` dummies, `SIGNED_VOLUME_1` missingness indicator, rolling return
   stats, same-day cross-sectional features
@@ -92,17 +94,34 @@ number):
 | + `GROUP` dummies | 0.5194 | 0.5210 |
 | + `SIGNED_VOLUME_1` missingness indicator | 0.5197 | 0.5211 |
 | + rolling return stats (`RET_MEAN_5/20`, `RET_STD_20`) | 0.5198 | **0.5212** |
-| + cross-sectional same-day features | **0.5206** | 0.5212 |
+| + cross-sectional same-day features | 0.5206 | 0.5212 |
+| + `RET_1 x GROUP` interaction | **0.5207** | 0.5211 |
 
-Real, but small: cumulative gains top out around +0.0012 accuracy (ridge, from the
-cross-sectional features) and +0.0002–0.0004 (lightgbm, mostly from rolling stats). `GROUP` alone
-is worth essentially nothing as a raw feature — a tree model already captures most of its
-information indirectly via turnover/volatility splits, and a linear model would need it
-*interacted* with `RET_1` rather than added as an offset (not tested here). Every configuration
-already clears the published benchmark's 0.5079 public score by 1–1.4 points. LightGBM feature
-importance (gain) on the best set confirms the EDA directly in a trained model: `RET_1` is ~10x
-the next feature (`RET_MEAN_5`), `GROUP` dummies and the missingness indicator don't crack the
-top 15.
+Real, but small: cumulative gains top out around +0.0012 accuracy (ridge, cross-sectional
+features) and +0.0002–0.0004 (lightgbm, mostly rolling stats). `GROUP` alone is worth essentially
+nothing as a raw feature (+0.00006 lightgbm), so it was tried as an explicit `RET_1 x GROUP`
+interaction on top of everything else too — also close to nothing (+0.00004 ridge over
+cross-sectional alone, and it slightly *hurts* lightgbm). The cross-sectional same-day features
+already seem to capture whatever `GROUP`-conditional signal is there; an explicit interaction
+term doesn't add more. Every configuration here already clears the published benchmark's 0.5079
+public score by 1–1.4 points. LightGBM feature importance (gain) on the best set confirms the EDA
+directly in a trained model: `RET_1` is ~10x the next feature (`RET_MEAN_5`), `GROUP` dummies and
+the missingness indicator don't crack the top 15.
+
+## Submission
+
+`notebooks/submission.ipynb` trains LightGBM with the `+ rolling stats` feature set (the literal
+CV-best, 0.5212, though it and `+ cross-sectional` are within noise of each other — see above) on
+the full training set and writes `submissions/lightgbm_rolling_stats.csv`, format-checked against
+`sample_submission.csv` (same shape, same index, values in `{0, 1}`).
+
+One check worth flagging: the model's raw out-of-fold predictions on train are skewed positive
+(59% > 0, vs. the true 50.7% base rate), which looked like it might call for recentering the
+`sign(pred) > 0` decision rule. Tested with a double cross-validated threshold search (pick the
+accuracy-best cutoff from other folds' OOF predictions, score the held-out fold with it, so the
+threshold never sees the labels it's evaluated against) — tuning makes no difference (0.5208 vs.
+0.5207 threshold=0). Accuracy depends on where the sign genuinely flips relative to truth, not on
+matching the marginal predicted-positive rate, so `sign(pred) > 0` was kept as-is.
 
 ## Data
 

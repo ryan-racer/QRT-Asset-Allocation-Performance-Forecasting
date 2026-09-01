@@ -6,6 +6,7 @@ GROUP_DUMMY_COLS = [f"GROUP_{g}" for g in [1, 2, 3, 4]]
 MISSING_COLS = ["SV1_MISSING"]
 ROLLING_COLS = ["RET_MEAN_5", "RET_MEAN_20", "RET_STD_20"]
 CROSS_SECTIONAL_COLS = ["SAMEDAY_MEAN_RET1", "SAMEDAY_GROUP_MEAN_RET1"]
+GROUP_INTERACTION_COLS = [f"RET1_x_GROUP_{g}" for g in [1, 2, 3, 4]]
 
 
 def engineer(df):
@@ -26,6 +27,9 @@ def engineer(df):
 
     df["SAMEDAY_MEAN_RET1"] = df.groupby("TS")["RET_1"].transform("mean")
     df["SAMEDAY_GROUP_MEAN_RET1"] = df.groupby(["TS", "GROUP"])["RET_1"].transform("mean")
+
+    for g in [1, 2, 3, 4]:
+        df[f"RET1_x_GROUP_{g}"] = df["RET_1"] * (df["GROUP"] == g)
 
     return df
 
