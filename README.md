@@ -22,12 +22,15 @@ liquidity, and turnover, predict the sign of its next-day return.
   structure (reads from `../data/raw/`, writes to `../submissions/`)
 - `notes/date_ordering.md`: investigation into whether the true calendar order is recoverable
   from `TS` (it isn't — see below)
+- `notes/accuracy_ceiling.md`: a 150+ configuration search for how far accuracy can realistically
+  go on this data (feature engineering, 3 GBM families, hierarchical encoding, ensembling, neural
+  sequence models) — see "Extended search" below
 - `notebooks/modeling.ipynb`: turns the EDA findings into features and checks each one under CV
-- `notebooks/submission.ipynb`: trains the CV-selected model on the full training set and writes
-  `submissions/lightgbm_rolling_stats.csv`
+- `notebooks/submission.ipynb`: trains the search-selected best model on the full training set
+  and writes `submissions/catboost_alloc_encoding.csv`
 - `src/qrt_prep.py`: raw loading, feature-column constants, `TS`-grouped fold/CV harness
 - `src/qrt_features.py`: `GROUP` dummies, `SIGNED_VOLUME_1` missingness indicator, rolling return
-  stats, same-day cross-sectional features
+  stats, same-day cross-sectional features, fold-safe per-`ALLOCATION` target encoding
 - `data/raw/X_train.csv`: training input data (527,073 rows)
 - `data/raw/y_train.csv`: training target data
 - `data/raw/X_test.csv`: test input data (31,870 rows)
@@ -108,20 +111,50 @@ public score by 1–1.4 points. LightGBM feature importance (gain) on the best s
 directly in a trained model: `RET_1` is ~10x the next feature (`RET_MEAN_5`), `GROUP` dummies and
 the missingness indicator don't crack the top 15.
 
+## Extended search: how far can accuracy go?
+
+`notes/accuracy_ceiling.md` documents a 150+ configuration search — exhaustive feature
+engineering against an established noise floor, LightGBM/XGBoost/CatBoost hyperparameter tuning
+across regression and classification objectives, hierarchical (partial-pooling) allocation
+encoding, properly nested-CV-weighted ensembling, and MLP/GRU neural sequence models — run to see
+how much further CV accuracy could legitimately move past the feature-engineering table above.
+
+The one real additional lever: a **fold-safe per-`ALLOCATION` target encoding**
+(`qrt_features.add_alloc_encoding`). Per-allocation base rates range **38.5%-65.9% positive**
+with **0.67 split-half reliability** — far more reliable than `GROUP`'s narrow 0.500-0.510 range
+— so it must be computed inside each CV fold (it uses `target`) but is otherwise the single
+biggest lever in the whole project: LightGBM 0.5210 → 0.5243. On top of that, switching to
+**CatBoost with a binary-classification objective** (depth 6, learning rate 0.015) adds another
+step to **~0.526** mean CV accuracy.
+
+Everything else tried — ~20 more engineered features, hierarchical shrinkage toward `GROUP`
+instead of the global mean, ensembling 3 model families, and neural sequence models over the raw
+`RET_1..20`/`SIGNED_VOLUME_1..20` history — failed to beat that ~0.526 ceiling; full results and
+reasoning in `notes/accuracy_ceiling.md`. This lines up with published research on short-horizon
+direction prediction (single-stock daily-direction accuracy is typically reported at 50-53%
+out-of-sample; claims materially above 55-57% are usually leakage or overfitting artifacts) — the
+gain found here (0.5079 published benchmark → 0.526, ≈1.8 points) sits squarely inside the range
+that literature predicts as a genuine, defensible edge for this problem shape.
+
 ## Submission
 
-`notebooks/submission.ipynb` trains LightGBM with the `+ rolling stats` feature set (the literal
-CV-best, 0.5212, though it and `+ cross-sectional` are within noise of each other — see above) on
-the full training set and writes `submissions/lightgbm_rolling_stats.csv`, format-checked against
-`sample_submission.csv` (same shape, same index, values in `{0, 1}`).
+`notebooks/submission.ipynb` trains the search-selected best model — CatBoost, binary objective,
+depth 6, learning rate 0.015, with the fold-safe allocation encoding — on the full training set
+and writes `submissions/catboost_alloc_encoding.csv` (~0.526 CV accuracy, re-verified in the
+notebook itself), format-checked against `sample_submission.csv` (same shape, same index, values
+in `{0, 1}`).
 
-One check worth flagging: the model's raw out-of-fold predictions on train are skewed positive
-(59% > 0, vs. the true 50.7% base rate), which looked like it might call for recentering the
-`sign(pred) > 0` decision rule. Tested with a double cross-validated threshold search (pick the
-accuracy-best cutoff from other folds' OOF predictions, score the held-out fold with it, so the
-threshold never sees the labels it's evaluated against) — tuning makes no difference (0.5208 vs.
-0.5207 threshold=0). Accuracy depends on where the sign genuinely flips relative to truth, not on
-matching the marginal predicted-positive rate, so `sign(pred) > 0` was kept as-is.
+A now-superseded LightGBM submission (`submissions/lightgbm_rolling_stats.csv`, ~0.521 CV
+accuracy) is left in place from an earlier iteration.
+
+One check worth flagging on the earlier LightGBM model: its raw out-of-fold predictions on train
+were skewed positive (59% > 0, vs. the true 50.7% base rate), which looked like it might call for
+recentering the `sign(pred) > 0` decision rule. Tested with a double cross-validated threshold
+search (pick the accuracy-best cutoff from other folds' OOF predictions, score the held-out fold
+with it, so the threshold never sees the labels it's evaluated against) — tuning makes no
+difference (0.5208 vs. 0.5207 threshold=0). Accuracy depends on where the sign genuinely flips
+relative to truth, not on matching the marginal predicted-positive rate, so `sign(pred) > 0` (or
+`predict_proba > 0.5` for CatBoost) is the right rule as-is.
 
 ## Data
 

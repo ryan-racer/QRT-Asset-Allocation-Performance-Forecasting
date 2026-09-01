@@ -17,3 +17,6 @@ wheels/
 
 # Raw challenge data (too large for git; download from the challenge platform)
 data/raw/*.csv
+
+# CatBoost training logs (regenerated on every fit)
+catboost_info/
