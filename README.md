@@ -9,6 +9,7 @@ liquidity, and turnover, predict the sign of its next-day return.
 - `data/raw/`: original challenge CSV files
 - `docs/`: challenge statement
 - `notebooks/`: exploratory and benchmark notebooks
+- `notes/`: written investigations (e.g. hidden-structure recovery attempts)
 - `submissions/`: generated submission files
 
 ## Files
@@ -18,6 +19,8 @@ liquidity, and turnover, predict the sign of its next-day return.
   outliers, feature/target association, train/test comparison, and grouped-CV baselines
 - `notebooks/benchmark_submission.ipynb`: benchmark notebook, updated to use the local folder
   structure (reads from `../data/raw/`, writes to `../submissions/`)
+- `notes/date_ordering.md`: investigation into whether the true calendar order is recoverable
+  from `TS` (it isn't — see below)
 - `data/raw/X_train.csv`: training input data (527,073 rows)
 - `data/raw/y_train.csv`: training target data
 - `data/raw/X_test.csv`: test input data (31,870 rows)
@@ -55,9 +58,9 @@ Main findings:
 - **`GROUP` is a fixed attribute of the allocation** (never changes across its history) and the 4
   groups differ meaningfully in return volatility and typical turnover.
 - **The `TS` numeric suffix carries no recoverable calendar order** — checked and ruled out the
-  trick that worked on a sibling QRT challenge (`DAY_ID`/`ID`); `RET_1` doesn't correlate with the
-  previous label-adjacent row's target for the same allocation, even restricted to unit label
-  gaps.
+  trick that worked on a sibling QRT challenge (`DAY_ID`/`ID`) two independent ways (an exact-match
+  fingerprint search and an autocorrelation/volatility-clustering test against a permutation
+  null); both come back clean nulls. Full writeup: [`notes/date_ordering.md`](notes/date_ordering.md).
 - **Same-day targets across allocations correlate at ~0.26** — a shared daily factor exists. Not
   directly usable as a feature (it's built from the labels), but it's why cross-validation must
   be grouped by `TS`, and why the benchmark's same-day average-of-past-returns features are
