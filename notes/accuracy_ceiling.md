@@ -5,7 +5,7 @@
 The published benchmark scores 0.5079 on the public leaderboard. The EDA (`notebooks/eda.ipynb`)
 found `sign(RET_1)` alone reaches 0.5189, and a first pass of feature engineering
 (`notebooks/modeling.ipynb`) reached 0.5210-0.5223. This note documents a much larger search —
-150+ configurations across five independent investigations — run to find out how much further
+150+ configurations across eight independent investigations — run to find out how much further
 that number can legitimately move, and to have a clear, evidenced answer for "why not higher"
 before spending more effort chasing it.
 
@@ -19,12 +19,16 @@ before spending more effort chasing it.
 | Hierarchical (partial-pooling) allocation encoding | 21-config grid: shrink allocation → `GROUP` mean → global mean, vs. flat shrink straight to global mean | 0.5253 (ties flat encoding, never exceeds it) | No |
 | Ensembling | Naive blend, rank-transformed blend, nested-CV-weighted blend of LightGBM + CatBoost + Ridge | 0.5257 (nested-weighted, ties best single model) | No — no diversity dividend beyond the single best model |
 | Neural sequence models | MLP and GRU (treating `RET_1..20`/`SIGNED_VOLUME_1..20` as an ordered sequence, not 40 independent columns), with a learned per-allocation embedding implemented but not fully evaluated | 0.5237 (MLP pilot) | No — underperforms GBMs |
+| CatBoost native categoricals | `ALLOCATION`/`GROUP` passed directly as CatBoost categorical features (ordered target statistics, a different leak-safe algorithm than the manual encoding), alone and combined with the manual encoding + cross-sectional features | 0.5259 alone, 0.5258 combined | No — ties the manual-encoding result; combined version has the tightest fold-to-fold spread of anything tried |
+| 5-seed bagging | Averaging CatBoost-winner predictions across 5 random training seeds, to check whether the model's own training randomness was hiding signal | 0.5256 (vs. 0.5257 single-seed) | No — identical within noise |
 
 **Best validated result: CatBoost, binary objective, depth 6, learning rate 0.015, 300
-iterations, with a fold-safe per-allocation target encoding (`k=50` shrinkage) on top of the
-best feature set from `notebooks/modeling.ipynb` (`BASE_FEATURES + GROUP + SV1_MISSING +
-rolling stats`). ~0.5257-0.5260 mean 5-fold `TS`-grouped CV accuracy, beating the prior best
-in 9 of 10 fold-seed combinations tested (paired mean delta +0.0017, paired std 0.0010).**
+iterations, with a fold-safe per-allocation target encoding (`k=50` shrinkage) *and*
+`ALLOCATION`/`GROUP` as native categoricals, on top of the best feature set from
+`notebooks/modeling.ipynb` (`BASE_FEATURES + GROUP + SV1_MISSING + rolling stats +
+cross-sectional`). ~0.526 mean 5-fold `TS`-grouped CV accuracy — this combined config is what
+`notebooks/submission.ipynb` trains; it doesn't beat the plain manual-encoding version on mean,
+but has the tightest fold-to-fold spread of anything tried in this search.**
 
 ## The one real lever: per-allocation target encoding
 
@@ -87,6 +91,18 @@ not a leakage red flag (no suspiciously large win to chase), just a genuinely we
 linear signal that a plain gradient-boosted tree already captures about as well as a neural net
 can from this little data per allocation.
 
+**CatBoost's native categorical handling doesn't beat the manual encoding, and averaging away
+training randomness doesn't reveal hidden signal either.** As one final check (after everything
+above independently converged on the same ~0.525 band), `ALLOCATION`/`GROUP` were passed directly
+to CatBoost as categorical features (`cat_features=[...]`) instead of the manual shrunk-mean
+encoding — CatBoost computes its own ordered target statistics internally, entirely from the
+training-fold rows passed to `.fit()`, a different algorithm that could plausibly have picked up
+something the manual encoding's flat shrinkage missed. It landed at 0.5259 alone and 0.5258
+combined with the manual encoding and cross-sectional features — indistinguishable from the
+0.5257 manual-encoding-only result. Separately, averaging CatBoost predictions across 5 different
+random training seeds (bagging away the model's own training-randomness variance) gave 0.5256 —
+also identical within noise. Eight independent methods, same ceiling.
+
 ## Why this ceiling is expected, not a failure of effort
 
 Published research on short-horizon direction prediction (drawn from short-term reversal/
@@ -102,6 +118,10 @@ require either a source of signal not present in this 41-column feature set, or 
 survive honest out-of-sample validation.
 
 ## Reproducing
+
+Minimal version (manual encoding only, ~0.5257); the exact adopted pipeline (manual encoding +
+native categoricals + cross-sectional features, ~0.526 with tighter fold spread) is
+`notebooks/submission.ipynb`.
 
 ```python
 import sys; sys.path.insert(0, 'src')
