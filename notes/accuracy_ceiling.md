@@ -1,6 +1,109 @@
 # How far can accuracy realistically go on this data?
 
-**Status: extensively searched. Ceiling found at ~0.520-0.526 CV accuracy.**
+**Status: extensively searched. Ceiling found at ~0.520-0.526 CV accuracy — but see the
+validation section first: that CV number overstates the leaderboard by ~0.006-0.017.**
+
+## Validation: why CV overstated the leaderboard (added 2026-09-02)
+
+The CatBoost + allocation-encoding model below (0.5257 random-date CV) scored **0.5089** on the
+public leaderboard — barely above the published benchmark (0.5079). Causes, each verified here:
+
+1. **The test block is dense; half of train is sparse.** Test has 266 rows/day on average and
+   102 of its 120 days have >= 270 allocations; train dates range from 19 to 276 rows and only
+   1,273 of 2,522 are dense. Sparse days are easier (more one-directional). Scoring the same
+   out-of-fold predictions only on dense train days:
+
+   | model | all days | dense days (>= 270) | sparse days |
+   |---|---|---|---|
+   | sign(RET_1) | 0.5189 | **0.5132** | 0.5304 |
+   | LightGBM, no encoding | 0.5208 | **0.5150** | 0.5325 |
+   | LightGBM + allocation encoding | 0.5243 | **0.5185** | 0.5360 |
+
+   Public solutions on this challenge report that dense-day CV lands within ~0.002 of their
+   final leaderboard score. `src/qrt_prep.dense_day_mask` / `report()` implement this protocol
+   with day-clustered standard errors (~±0.002 on 1,273 dense train days, ~±0.0065 on a
+   120-day block).
+2. **The allocation encoding doesn't transfer out-of-time.** It still adds +0.0035 in dense-day
+   CV, but random-date folds can't see temporal decay; public analyses find per-allocation
+   target bias has in-sample Spearman ~0.74 but only ~0.28 out-of-sample (day effects explain
+   ~8% of target variance, allocation effects ~1.8%). Adversarial validation also shows several
+   allocations present on only ~57% of train dates are present on ~95% of test dates, so the
+   encoding was extrapolating for exactly the rows that dominate test. ALLOCATION as a native
+   categorical is reported to generalize better (+0.0044 on the leaderboard for others).
+3. **Leaderboard noise is large.** Same-day targets share a common factor (per-day positive rate
+   ranges 0.15-0.90), so 120 test days behave like far fewer independent observations. Bootstrapping
+   120-day blocks of our own OOF predictions gives SD 0.0069; a true-0.524 model scores below 0.5089
+   only ~1.4% of the time, so the drop is real, but differences under ~0.006 on the leaderboard are
+   noise. Public leaderboard scale: 0.5208 ≈ rank 245/1180 (top quartile); 0.5089 is bottom half.
+4. **Positive-share drift.** MSE-regression models predict 57-59% positive vs a 50.7% base rate;
+   accuracy is dominated by each day's majority sign, so a positive lean is costly on down days.
+5. **Fold purity.** Adjacent train days are recoverable by shape-matching (see
+   `notes/date_ordering.md`, corrected), so plain TS-grouped folds are mildly optimistic (~0.001).
+
+The rest of this note is the original in-sample search, kept for the record; its numbers are
+random-date CV and should be read ~0.006 lower for dense days.
+
+## Round 2 (2026-09-02): what survives on test-like days
+
+Two validation views are used below. **Dense-day CV**: 5-fold TS-grouped OOF scored only on
+train dates with >= 270 allocations (`qrt_prep.report`, day-clustered SE ≈ ±0.002).
+**Pseudo-test block**: the 250 dense train dates an adversarial train-vs-test classifier ranks
+most test-like (69k rows; their true positive rate is 0.4997 vs 0.508 for the rest of train —
+i.e. a more balanced period, like the leaderboard evidently was), trained on all other dates, SE
+≈ ±0.004. The block is the closest thing to a temporal holdout this data allows.
+
+**Replicated wins from public solutions, added cumulatively (dense-day CV, seed 0 / seed 1):**
+
+| step | dense acc ± SE | pos share | paired Δ |
+|---|---|---|---|
+| MSE LightGBM, base features (prior baseline) | 0.5150 ± 0.0020 | 0.594 | — |
+| binary logloss (lr 0.02, 15 leaves, 250 rounds) | 0.5191 ± 0.0019 | 0.596 | +0.0041 (half from params, half from the objective, z 2.4) |
+| + ALLOCATION/GROUP as native categoricals | 0.5191 ± 0.0017 | 0.572 | +0.0000 |
+| + per-TS cross-sectional relatives (42 cols) | 0.5186 ± 0.0018 | 0.581 | −0.0005 (dropped) |
+| + mean-reversion `RET_1 − RET_MEAN_k` | 0.5199 ± 0.0018 | 0.591 | +0.0013 (z 1.8) |
+| + volume-reporting regime flags | 0.5213 ± 0.0018 | 0.591 | +0.0015 (z 2.8) |
+| + factor-projected RET_1 (common/idiosyncratic) | 0.5207 ± 0.0018 | 0.586 | −0.0007 |
+| **final = cat + mr + vol + fac, no relatives** | **0.5215 ± 0.0019** / 0.5213 | 0.566 | +0.0065 vs baseline (z 4.6) |
+
+Threshold pinning (predicted positive share forced to the 0.507 base rate) *hurts* in dense-day
+CV (−0.001 to −0.002): the OOF probabilities are calibrated (bin (0.50, 0.505] → 51.3% up,
+> 0.56 → 55.4% up), so the 57-59% lean is the conditional distribution on a mostly-up training
+period, not miscalibration.
+
+**The same pipeline on the pseudo-test block, where the period is ~50% positive:**
+
+| model | thr 0.5 | pos | pinned to 0.507 | pos |
+|---|---|---|---|---|
+| sign(RET_1) | 0.5129 ± 0.0042 | 0.504 | — | — |
+| binary base (interim `lgbm_binary_pinned`) | 0.5169 ± 0.0040 | 0.610 | 0.5178 ± 0.0039 | 0.496 |
+| cat + mr + vol | 0.5173 ± 0.0039 | 0.594 | 0.5167 ± 0.0037 | 0.507 |
+| final (cat + mr + vol + fac) | 0.5181 ± 0.0041 | 0.582 | 0.5200 ± 0.0041 | 0.501 |
+| mr + vol only | 0.5196 ± 0.0044 | 0.617 | 0.5201 ± 0.0042 | 0.494 |
+| **final minus cat (mr + vol + fac)** | 0.5202 ± 0.0046 | 0.622 | **0.5208 ± 0.0044** | 0.495 |
+| earlier: LightGBM + allocation target encoding | 0.5156 | 0.580 | — | — |
+
+Reading: on test-like days the allocation target encoding adds +0.0002 (vs +0.0035 in plain
+dense-day CV) and native allocation categoricals are neutral-to-negative (−0.002) — allocation
+identity does not transfer. Mean-reversion + volume-regime features do carry over (+0.003 over
+the binary base). Pinning the threshold is neutral-to-positive here (+0.0005 to +0.002) even
+though it hurts in CV, because this block — like the leaderboard period — is not up-leaning.
+All of these differences are within ~1 SE of each other on 250 days; the ordering, not the
+individual gaps, is what's trustworthy.
+
+**Day-level market direction (negative).** Yesterday's cross-sectional mean return predicts the
+date's positive rate (r = 0.108, t = 5.5; `sign(mean RET_1)` calls the day's majority 53.4% of
+the time vs 51.6% always-up, strongest in high-vol and post-drawdown terciles). But it is not
+exploitable: a perfect day-majority oracle would only reach 0.5716 row-level, the real day model
+is unstable across folds (0.48-0.57), applying it to every row scores 0.506 (< sign(RET_1)), and
+adding its prediction to the row model changes nothing (+0.0002). Reformulating the target as
+within-date demeaned return hurts monotonically (−0.001 to −0.010). Row models already extract
+what is there via RET_1.
+
+**Recommendation:** `submissions/lgbm_final_nocat_mr_vol_fac_pinned.csv` (binary LightGBM,
+base + rolling + mean-reversion + volume-regime + factor features, no allocation identity,
+threshold pinned to the base rate; `src/qrt_replicate.py` spec `base,dum,miss,roll,mr,vol,fac`).
+Expected leaderboard: ~0.516-0.521 given the ±0.006 block noise. `lgbm_binary_pinned.csv` is
+the simpler fallback (same pipeline without mr/vol/fac).
 
 The published benchmark scores 0.5079 on the public leaderboard. The EDA (`notebooks/eda.ipynb`)
 found `sign(RET_1)` alone reaches 0.5189, and a first pass of feature engineering

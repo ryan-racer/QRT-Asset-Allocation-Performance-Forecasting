@@ -1,6 +1,35 @@
 # Is the true date order recoverable?
 
-**Status: NOT RECOVERABLE — checked two independent ways, both clean nulls.**
+**Status: CORRECTED (2026-09-02). Within-train adjacency IS recoverable by shape-matching; the
+test set is clean, so this is a validation-purity issue, not an exploit.** The original
+conclusion below (two clean nulls) was right about what it tested and wrong about what it
+implied: the exact-match test in §2 fails because each row's returns are *rescaled* (so
+`RET_1(t+1) == TARGET(t)` never holds bit-for-bit), not because adjacency was destroyed.
+Matching the *direction* of the vectors instead — cosine similarity between a row's
+`RET_2..RET_20` and another row's `RET_1..RET_19` for the same allocation — recovers
+predecessors for ~54% of sampled rows at cosine > 0.99 (median best similarity 0.991), with many
+date pairs matched unanimously across every allocation checked (e.g. `DATE_2167 → DATE_0001`,
+`DATE_0002 → DATE_0370`). Public solutions report ~88% of train labels readable this way and
+2,218/2,522 dates with a successor. The §3 autocorrelation test also stands: the *label
+numbering* carries no order — the chains are a permutation of the labels, which is exactly why
+label-order autocorrelation is null.
+
+**Why it doesn't help the leaderboard:** the same check on `X_test` finds **0 of 1,374 sampled
+test rows** with a predecessor anywhere in train or test — the organizers cleaned the test block.
+Reconstructed chains can't reach test labels.
+
+**Why it matters anyway:** adjacent train days share 19 of 20 return features. A plain
+`TS`-grouped fold can put day *t* in train and its successor *t+1* in validation, so the model
+sees a near-copy of the validation row's history — a mild optimism (public estimates ~0.001).
+Chain-aware folds (assign whole chains to a fold) or an embargo remove it. Combined with the
+much larger "dense-day" effect (see `notes/accuracy_ceiling.md`, validation section), this is
+part of why random-date CV overstates leaderboard accuracy.
+
+The original investigation follows, unchanged, for the record.
+
+---
+
+**Original status (2026-09-01): NOT RECOVERABLE — checked two independent ways, both clean nulls.**
 
 The sibling QRT challenge (electricity price forecasting) had a `DAY_ID` column that was a
 shuffle decoy while a second column, `ID`, silently encoded the true chronological order — worth

@@ -26,11 +26,18 @@ liquidity, and turnover, predict the sign of its next-day return.
   go on this data (feature engineering, 3 GBM families, hierarchical encoding, ensembling, neural
   sequence models) — see "Extended search" below
 - `notebooks/modeling.ipynb`: turns the EDA findings into features and checks each one under CV
-- `notebooks/submission.ipynb`: trains the search-selected best model on the full training set
-  and writes `submissions/catboost_alloc_encoding.csv`
-- `src/qrt_prep.py`: raw loading, feature-column constants, `TS`-grouped fold/CV harness
+- `notebooks/submission.ipynb`: trains the round-1 CatBoost model on the full training set and
+  writes `submissions/catboost_alloc_encoding.csv` (superseded — scored 0.5089 on the leaderboard)
+- `src/qrt_prep.py`: raw loading, feature-column constants, `TS`-grouped fold/CV harness, and the
+  honest validation helpers (`dense_day_mask`, `day_clustered_accuracy`, `oof_predictions`, `report`)
 - `src/qrt_features.py`: `GROUP` dummies, `SIGNED_VOLUME_1` missingness indicator, rolling return
   stats, same-day cross-sectional features, fold-safe per-`ALLOCATION` target encoding
+- `src/qrt_replicate.py`: the round-2 pipeline — binary-objective LightGBM with mean-reversion,
+  volume-reporting-regime and factor-projected `RET_1` features (`build_features`,
+  `make_fit_predict`, `FEATURE_SETS`)
+- `submissions/lgbm_final_nocat_mr_vol_fac_pinned.csv`: **current recommended submission**
+  (round-2 pipeline without allocation identity, threshold pinned to the base rate);
+  `lgbm_binary_pinned.csv` is the simpler fallback; `diag_*.csv` are leaderboard calibration probes
 - `data/raw/X_train.csv`: training input data (527,073 rows)
 - `data/raw/y_train.csv`: training target data
 - `data/raw/X_test.csv`: test input data (31,870 rows)
@@ -136,9 +143,39 @@ out-of-sample; claims materially above 55-57% are usually leakage or overfitting
 gain found here (0.5079 published benchmark → 0.526, ≈1.8 points) sits squarely inside the range
 that literature predicts as a genuine, defensible edge for this problem shape.
 
-## Submission
+## Leaderboard reality check and round 2
 
-`notebooks/submission.ipynb` trains the search-selected best model — CatBoost, binary objective,
+The CatBoost + allocation-encoding model above scored **0.5089** on the public leaderboard —
+1.7 points below its CV and barely above the benchmark. The validation was the bug, not the
+model. Verified causes and fixes (full detail in `notes/accuracy_ceiling.md`, validation and
+round-2 sections):
+
+- **Score only dense days.** Test has 266 rows/day; half of train's dates are sparse, and sparse
+  days are easier. Dense-day CV (`qrt_prep.report`) drops every model ~0.006 and matches what
+  public solutions see on the leaderboard (~0.52 is top quartile).
+- **Allocation identity doesn't transfer.** On the 250 most test-like train dates (found by
+  adversarial validation; their positive rate is 50.0%, like the leaderboard period evidently
+  was) the target encoding adds +0.0002 and native categoricals are neutral-to-negative.
+- **Positive lean.** Regression/binary models predict 57-62% positive; on a balanced period that
+  costs. Pinning the threshold to the base rate is neutral in CV and slightly positive on the
+  test-like block.
+- **What does carry over** (replicated from public solutions, `src/qrt_replicate.py`): binary
+  logloss (+0.004), mean-reversion terms `RET_1 − RET_MEAN_k` (+0.001) and volume-reporting
+  regime flags (+0.0015). Cross-sectional rank/z features, factor projection, per-`GROUP` models,
+  ensembling, and a day-level market-direction model were all tested and add nothing.
+- **Leaderboard noise is ±0.006** on 120 days (same-day common factor), so differences below
+  that between submissions are not interpretable.
+
+| model | dense-day CV | pseudo-test block |
+|---|---|---|
+| sign(RET_1) | 0.5132 | 0.5129 |
+| binary LightGBM, base features, pinned (`lgbm_binary_pinned.csv`) | 0.5177 | 0.5178 |
+| **round-2 pipeline, no allocation identity, pinned (recommended)** | ~0.520 | **0.5208 ± 0.0044** |
+| round-1 CatBoost + allocation encoding (`catboost_alloc_encoding.csv`) | 0.5185 (LightGBM equiv.) | 0.5156 → **0.5089 real** |
+
+## Submission (round 1, superseded)
+
+`notebooks/submission.ipynb` trains the round-1 model — CatBoost, binary objective,
 depth 6, learning rate 0.015, with the fold-safe allocation encoding — on the full training set
 and writes `submissions/catboost_alloc_encoding.csv` (~0.526 CV accuracy, re-verified in the
 notebook itself), format-checked against `sample_submission.csv` (same shape, same index, values
