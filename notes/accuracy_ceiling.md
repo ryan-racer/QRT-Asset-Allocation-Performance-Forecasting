@@ -209,8 +209,14 @@ the only round-3 change with a stable, >1.5 SE out-of-time gain: chronology hold
 0.5257-0.5267 at threshold 0.5 and **0.5273-0.5277 pinned** at both model seeds (LightGBM:
 0.5227 / 0.5212), test-like block 0.5223 (LightGBM 0.5210), dense-day CV +0.0007-0.0012.
 Expected leaderboard: ~0.518-0.523 given the ±0.008 SE at 120 days.
-`lgbm_final_nocat_mr_vol_fac_pinned.csv` is the LightGBM version of the same pipeline (91%
-agreement); `lgbm_binary_pinned.csv` the simpler fallback (no mr/vol/fac).
+Caveat: the CatBoost gain is decisive only on the chronology holdout (+0.0054-0.0061 pinned,
+z > 3 at both model seeds); on the adversarial test-like block it is +0.0005-0.0018, inside
+that view's ±0.0017 SE. Blending LightGBM into CatBoost (0.25/0.75) and adding the 14
+row-local public-repo features to CatBoost both cost 0.0004-0.0025 on the holdout, so the
+plain CatBoost is kept. The earlier leaderboard disappointment (0.5089) was CatBoost *with* the
+allocation encoding; the holdout attributes that loss to the encoding (−0.0036), not to the
+learner. `lgbm_final_nocat_mr_vol_fac_pinned.csv` is the LightGBM version of the same pipeline
+(91% agreement); `lgbm_binary_pinned.csv` the simpler fallback (no mr/vol/fac).
 
 The published benchmark scores 0.5079 on the public leaderboard. The EDA (`notebooks/eda.ipynb`)
 found `sign(RET_1)` alone reaches 0.5189, and a first pass of feature engineering
