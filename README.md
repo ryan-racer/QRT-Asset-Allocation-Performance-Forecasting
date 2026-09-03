@@ -171,7 +171,10 @@ round-2 sections):
   turns that into a true out-of-time split (last 15% of the calendar, 20-day embargo) whose
   positive rate (0.498) matches the balanced leaderboard period. On it the round-2 pipeline
   scores 0.5231 ± 0.0041, `sign(RET_1)` 0.5175, and allocation identity hurts (0.519-0.520) —
-  the leaderboard result reproduced offline. Recency weighting does not help.
+  the leaderboard result reproduced offline. Recency weighting does not help. The timeline also
+  explains the encoding's false promise: the wide per-allocation base rates live in an early,
+  sparse, `GROUP`-3-only era (within-era std 0.163) and shrink to sampling noise (0.032) in the
+  dense era the test block comes from. At test size (120 dates) any score has SE ≈ 0.008.
 - **Competition scale**: the private leaderboard (1,290 entries) tops out at 0.5409; public
   scores with code peak around 0.521-0.523.
 

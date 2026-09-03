@@ -60,6 +60,45 @@ public leaderboard — barely above the published benchmark (0.5079). Causes, ea
    weighting does not beat training on everything. This holdout is now the primary selection
    criterion, ahead of dense-day CV and the adversarial pseudo-test block.
 
+   **Rolling-origin confirmation** (three consecutive 378-date holdout blocks along the
+   chronology, 20-day embargo, 2-seed average, pooled day-clustered SE ≈ 0.0024):
+
+   | config | block 1 | block 2 | block 3 (latest) | mean | vs base |
+   |---|---|---|---|---|---|
+   | sign(RET_1) | 0.5124 | 0.5104 | 0.5168 | 0.5132 | −0.0036 |
+   | round-2 pipeline (base) | 0.5140 | 0.5132 | 0.5231 | 0.5168 | — |
+   | base, threshold → 51% / 55% positive | 0.5133 / 0.5145 | 0.5160 / 0.5154 | 0.5223 / 0.5225 | 0.5172 / 0.5175 | +0.0004 / +0.0007 |
+   | + allocation target encoding | 0.5152 | 0.5119 | 0.5195 | 0.5155 | −0.0012 |
+   | + native categoricals | 0.5126 | 0.5118 | 0.5207 | 0.5151 | −0.0017 |
+   | dense-days-only training | 0.5089 | 0.5059 | 0.5197 | 0.5115 | −0.0053 |
+   | recent 50% of dates only | 0.5122 | 0.5100 | 0.5202 | 0.5141 | −0.0026 |
+   | time-decay weights, half-life 500 / 1000 | 0.5120 / 0.5139 | 0.5132 / 0.5141 | 0.5210 / 0.5242 | 0.5154 / 0.5174 | −0.0013 / +0.0007 |
+
+   At test size (last 120 dates, 100 dense): base 0.5277 ± 0.0081, sign(RET_1) 0.5205 ± 0.0071,
+   all-positive 0.5071 ± 0.0104 — **the SE of any 120-day score is ~0.008**, so the 0.5089
+   leaderboard result sits ~1.5-2 SE below the honest out-of-time expectation of ~0.517-0.523.
+
+   **Why the allocation encoding fooled CV.** The chronology is an expanding universe: ~505
+   early dates with GROUP 3 only (65-69 rows/day), then ~500 dates with three groups, then
+   ~1,500 dense dates with all four (the test block is dense). Per-allocation positive rates have
+   within-era std **0.163 in the earliest era, 0.046 in the next, and 0.032-0.035 in the dense
+   era** — barely above the ~0.023 expected from sampling noise. The "38.5%-65.9% base rates"
+   that drove the +0.003 CV gain are an artefact of the tiny early universe; in the test-like era
+   the persistent per-allocation component is worth at most +0.4 pt over all-positive.
+   Correlation of allocation rates between consecutive eras falls 0.85 → 0.58 → 0.44 → 0.38.
+
+   **Effects that are stable vs. not, along the timeline** (correlation with target > 0, ×1000,
+   five consecutive blocks): RET_1 +85 / +71 / +28 / +30 / +35 (strong only in the sparse eras,
+   ~+30 stable in the dense era); mean-reversion terms the same pattern; the common-factor part
+   of RET_1 stable/rising (+14 → +42) while the idiosyncratic part decays (+25 → +12);
+   SV1_MISSING / FULL_REPORT_DAY and turnover stable; SIGNED_VOLUME_1 and the per-date
+   average-performance features **flip sign** across eras and are never significant.
+
+   **Regime at the end of train / start of test**: the last 120 train dates have positive rate
+   0.506 ± 0.010, trailing 20-day market direction ≈ 0 and below-average volatility; the test
+   rows' own windows agree (share RET_1 > 0: 0.515 vs 0.511). The test period starts in a quiet,
+   directionless regime, which is why an "always positive" probe scored only 0.5033 there.
+
 The rest of this note is the original in-sample search, kept for the record; its numbers are
 random-date CV and should be read ~0.006 lower for dense days.
 
