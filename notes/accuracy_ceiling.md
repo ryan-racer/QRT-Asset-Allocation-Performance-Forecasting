@@ -208,7 +208,11 @@ allocation identity), threshold pinned to the base rate (predicts 50.2% positive
 the only round-3 change with a stable, >1.5 SE out-of-time gain: chronology holdout
 0.5257-0.5267 at threshold 0.5 and **0.5273-0.5277 pinned** at both model seeds (LightGBM:
 0.5227 / 0.5212), test-like block 0.5223 (LightGBM 0.5210), dense-day CV +0.0007-0.0012.
-Expected leaderboard: ~0.518-0.523 given the ±0.008 SE at 120 days.
+Expected leaderboard: ~0.518-0.523 given the ±0.008 SE at 120 days. **Actual public score
+(2026-09-03): 0.5140** — up from 0.5089, +0.0076 over the public-period `sign(RET_1)` probe
+(0.5064) versus +0.010 expected offline, i.e. ~0.5 SE below expectation and consistent with
+the holdout. The public period is balanced (always-positive scores 0.5033) with roughly half
+the training-era momentum edge, which caps what any model can score on it.
 Caveat: the CatBoost gain is decisive only on the chronology holdout (+0.0054-0.0061 pinned,
 z > 3 at both model seeds); on the adversarial test-like block it is +0.0005-0.0018, inside
 that view's ±0.0017 SE. Blending LightGBM into CatBoost (0.25/0.75) and adding the 14

@@ -187,7 +187,12 @@ round-2 sections):
 | sign(RET_1) | 0.5132 | 0.5129 |
 | binary LightGBM, base features, pinned (`lgbm_binary_pinned.csv`) | 0.5177 | 0.5178 |
 | round-2 pipeline (LightGBM), no allocation identity, pinned | ~0.520 | 0.5208 ± 0.0044 (out-of-time holdout 0.5226) |
-| **same features, CatBoost, pinned (recommended)** | ~0.522 | **0.5223 ± 0.004 (out-of-time holdout 0.5273-0.5277)** |
+| **same features, CatBoost, pinned (recommended)** | ~0.522 | **0.5223 ± 0.004 (out-of-time holdout 0.5273-0.5277) → 0.5140 real** |
+
+The 0.5140 public score (2026-09-03) is +0.0076 over the public-period `sign(RET_1)` probe
+(0.5064, from other teams) against an offline expectation of +0.010 — consistent within the
+±0.008 noise of a 120-day score. On this public period "always positive" scores 0.5033, so the
+period is balanced and the momentum edge is about half its training-era size.
 | round-1 CatBoost + allocation encoding (`catboost_alloc_encoding.csv`) | 0.5185 (LightGBM equiv.) | 0.5156 → **0.5089 real** |
 
 ## Submission (round 1, superseded)
