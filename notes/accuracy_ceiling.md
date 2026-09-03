@@ -158,6 +158,49 @@ adding its prediction to the row model changes nothing (+0.0002). Reformulating 
 within-date demeaned return hurts monotonically (−0.001 to −0.010). Row models already extract
 what is there via RET_1.
 
+## Round 3 (2026-09-02): construction forensics and the remaining public-solution ideas
+
+**Where the ceiling comes from — the label is partly noise.** Along the reconstructed chronology
+a day's return appears four times: as `target` on day t, then as `RET_1`, `RET_2`, `RET_3` on
+the following rows. These versions are *revised* between rows: `target` vs the next row's
+`RET_1` has sign agreement **88.5%** (corr 0.917; 72.5 / 94.1 / 98.9% by |target| tercile), and
+the settled versions agree with `target` only 92.0-92.5%. The revision is portfolio-level and
+structured (near-duplicate allocations share it, corr 0.95) but unpredictable from the row
+(OOF R² 0.002). So ~8% of target signs are unknowable even given the settled return, and a
+perfect model of the true return would score ~0.92, not 1.0 — the ~0.52 we reach is a small
+edge on top of a noisy label, not a failure to find signal.
+
+**Construction structure found, none of it usable on test:**
+
+- SIGNED_VOLUME chains **bit-exactly** across consecutive rows (a rolling re-normalisation);
+  RET is rescaled per row with a ratio ≈ 1 that carries no signal (corr with sign 0.0007).
+- **Weekday cycle**: full-reporting days (SIGNED_VOLUME_1 present for all allocations) recur
+  every 5 trading days. On dense days, 1-day momentum lives on two weekdays (`sign(RET_1)`
+  accuracy 0.537 ± 0.005 on one, ~0.50 on two others; corr(RET_1, target) 0.150 vs ~0). The
+  weekday is partially recoverable from a test date's cross-section (52% vs 26% chance) — but
+  an **oracle** that hands the model the true weekday gains +0.0000 ± 0.0006 in CV and
+  +0.0008 ± 0.0015 out-of-time (with RET_1 × weekday interactions +0.0018 ± 0.0016): the
+  pipeline already captures it through `FULL_REPORT_DAY`. Lead closed.
+- Near-duplicate allocations (91 pairs with return correlation > 0.9, one mirror pair at −0.95)
+  have same-sign targets 82-93% of the time, but cluster-mean smoothing of predictions gains
+  +0.0004 ± 0.0003 — the revision noise is shared within a cluster, so averaging can't remove it.
+- Turnover is a slow allocation attribute (97.6% of variance is allocation identity; day-to-day
+  corr 0.9997); its change carries nothing and is unavailable on test anyway.
+- **Test days are isolated**: 0 exact-volume or cosine matches to any train or test row at any
+  shift; every test day is ≥ 9 trading days from any other day — spaced samples from a period
+  outside the contiguous train span. No leak reaches them.
+
+**Remaining public-solution ideas, tested on all three views** (dense-day CV / pseudo-test block
+/ out-of-time holdout, paired vs the round-2 pipeline): a 16-feature block from the top repos
+(`reversal_1_vs_5`, `vol_ratio`, `turnover_per_volume`, EWMA/MACD, per-(TS, GROUP) positive rate
+and Sharpe dispersion, …) is flat in CV and +0.002-0.003 on the two out-of-time views when the
+threshold is pinned (≈1.5 SE, and ablating its top feature moves the views in opposite
+directions — noise); per-allocation slope / momentum-hit encodings and hit-rate decile bucketing
+are flat everywhere; a "starved" LightGBM (feature_fraction 0.08, min_data_in_leaf 2000, λ2 50)
+loses 0.0014 in CV and gains ~0.002 out-of-time (≈1 SE); clipped-target MSE is a wash; Huber
+regression is clearly worse (−0.0034 on the block, z −2.2); median-of-fold-models is noise;
+CatBoost on the same features is +0.001 across views, as in round 1. Nothing clears ~2 SE.
+
 **Recommendation:** `submissions/lgbm_final_nocat_mr_vol_fac_pinned.csv` (binary LightGBM,
 base + rolling + mean-reversion + volume-regime + factor features, no allocation identity,
 threshold pinned to the base rate; `src/qrt_replicate.py` spec `base,dum,miss,roll,mr,vol,fac`).
