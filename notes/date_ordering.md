@@ -18,6 +18,19 @@ label-order autocorrelation is null.
 test rows** with a predecessor anywhere in train or test — the organizers cleaned the test block.
 Reconstructed chains can't reach test labels.
 
+**Update (later on 2026-09-02): the full chronology is solved.** The reason a naive
+"one successor per date" search fragments into ~200 chains is that **each `GROUP` trades on its
+own calendar** — a date's rows for GROUP 1 and GROUP 3 are consecutive to different dates. Building
+one successor chain per GROUP and merging them by topological sort orders **2,520 of 2,522
+dates with zero order violations across 7,635 edges**, leaving two components: a 423-date
+GROUP-3-only era that joins the 2,099-date main component at gap 1 (41 allocation votes,
+turnover continuity confirmed). The mapping is versioned as `notes/ts_chain_map.csv` (`TS,
+chain_id, pos, day, n_allocs, groups`) and `src/qrt_prep.temporal_holdout` turns it into an
+out-of-time split (last 15% of the calendar, 20-day embargo). On that holdout: `sign(RET_1)`
+0.5168 ± 0.0039, the round-2 pipeline 0.5227 ± 0.0042, and adding allocation identity *hurts*
+(0.519-0.520) — the same pattern the leaderboard showed. Recency weighting and recent-only
+training do not beat training on everything.
+
 **Why it matters anyway:** adjacent train days share 19 of 20 return features. A plain
 `TS`-grouped fold can put day *t* in train and its successor *t+1* in validation, so the model
 sees a near-copy of the validation row's history — a mild optimism (public estimates ~0.001).

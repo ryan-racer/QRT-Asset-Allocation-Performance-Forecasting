@@ -73,6 +73,31 @@ def oof_predictions(df, y, fit_predict, n_splits=5, seed=0):
     return oof
 
 
+CHAIN_MAP_PATH = "notes/ts_chain_map.csv"
+
+
+def load_chronology(path=CHAIN_MAP_PATH):
+    """Reconstructed calendar position of every train date (see notes/date_ordering.md).
+    Rows were rescaled, so exact matching fails, but cosine-matching RET_2..20 against the
+    next day's RET_1..19 within each allocation recovers successors; each GROUP trades on its
+    own calendar, so per-GROUP chains merged by topological sort order 2,520 of 2,522 dates
+    with no violations. Columns: TS, chain_id, pos, day, n_allocs, groups."""
+    return pd.read_csv(path)
+
+
+def temporal_holdout(df, frac=0.15, embargo=20, chronology=None):
+    """Out-of-time split: the last `frac` of the reconstructed calendar is the holdout; the
+    training mask excludes the holdout and an `embargo` of days before it (adjacent days share
+    19 of 20 return features). This mimics the leaderboard, whose 120 dates come after all of
+    train. Returns (train_mask, holdout_mask) as boolean arrays aligned with df."""
+    chron = load_chronology() if chronology is None else chronology
+    day = df["TS"].map(chron.set_index("TS")["day"]).to_numpy()
+    cutoff = np.nanquantile(chron["day"].to_numpy(), 1 - frac)
+    holdout = day >= cutoff
+    train = day < cutoff - embargo
+    return train, holdout
+
+
 def report(df, y, oof, threshold=0.0):
     """Honest summary of an OOF prediction vector: all-day and dense-day accuracy, each with a
     day-clustered SE, plus the predicted-positive share (test base rate is ~0.507; models that

@@ -39,6 +39,26 @@ public leaderboard — barely above the published benchmark (0.5079). Causes, ea
    accuracy is dominated by each day's majority sign, so a positive lean is costly on down days.
 5. **Fold purity.** Adjacent train days are recoverable by shape-matching (see
    `notes/date_ordering.md`, corrected), so plain TS-grouped folds are mildly optimistic (~0.001).
+6. **A true out-of-time holdout now exists.** The full train chronology was reconstructed
+   (`notes/ts_chain_map.csv`; each `GROUP` trades on its own calendar, per-`GROUP` chains merged
+   by topological sort, 2,520/2,522 dates ordered). `src/qrt_prep.temporal_holdout` takes the
+   last 15% of the calendar (379 dates, 320 dense) with a 20-day embargo. Its positive rate is
+   0.498 — balanced, like the leaderboard period (others' "always positive" probe scored 0.5033
+   there). Verified numbers on the dense holdout days:
+
+   | model | out-of-time acc ± SE | pos share |
+   |---|---|---|
+   | sign(RET_1) | 0.5175 ± 0.0039 | 0.505 |
+   | round-2 pipeline (no allocation identity), thr 0.5 | **0.5231 ± 0.0041** | 0.593 |
+   | same, threshold pinned to base rate | 0.5226 ± 0.0041 | 0.500 |
+   | + per-allocation target encoding | 0.5191 | — |
+   | + native allocation categoricals | 0.5199 | — |
+   | recent-only training (25/50/75% of calendar) | 0.5176 / 0.5199 / 0.5218 | — |
+   | time-decay weights (half-life 250-2000 days) | 0.5167-0.5242 | — |
+
+   Allocation identity hurts out-of-time (the leaderboard result, reproduced); recency
+   weighting does not beat training on everything. This holdout is now the primary selection
+   criterion, ahead of dense-day CV and the adversarial pseudo-test block.
 
 The rest of this note is the original in-sample search, kept for the record; its numbers are
 random-date CV and should be read ~0.006 lower for dense days.
