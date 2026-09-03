@@ -35,11 +35,13 @@ liquidity, and turnover, predict the sign of its next-day return.
 - `src/qrt_replicate.py`: the round-2 pipeline — binary-objective LightGBM with mean-reversion,
   volume-reporting-regime and factor-projected `RET_1` features (`build_features`,
   `make_fit_predict`, `FEATURE_SETS`)
-- `submissions/lgbm_final_nocat_mr_vol_fac_pinned.csv`: **current recommended submission**
-  (round-2 pipeline without allocation identity, threshold pinned to the base rate);
-  `lgbm_final_nocat_2seed_53pct.csv` is the same pipeline averaged over two seeds with the
-  threshold set to 53% positive (the out-of-time analysis' suggestion; 96% agreement);
-  `lgbm_binary_pinned.csv` is the simpler fallback; `diag_*.csv` are leaderboard calibration probes
+- `submissions/catboost_nocat_mr_vol_fac_pinned.csv`: **current recommended submission** —
+  CatBoost (depth 6, lr 0.015, 300 iterations, 2 seeds averaged) on the round-2 feature set
+  without allocation identity, threshold pinned to the base rate; the only round-3 change with a
+  stable >1.5 SE out-of-time gain (0.5273-0.5277 on the chronology holdout vs 0.5212-0.5223 for
+  LightGBM); `lgbm_final_nocat_mr_vol_fac_pinned.csv` is the LightGBM version (91% agreement),
+  `lgbm_final_nocat_2seed_53pct.csv` its 2-seed / 53%-positive variant, `lgbm_binary_pinned.csv`
+  the simpler fallback; `diag_*.csv` are leaderboard calibration probes
 - `data/raw/X_train.csv`: training input data (527,073 rows)
 - `data/raw/y_train.csv`: training target data
 - `data/raw/X_test.csv`: test input data (31,870 rows)
@@ -184,7 +186,8 @@ round-2 sections):
 |---|---|---|
 | sign(RET_1) | 0.5132 | 0.5129 |
 | binary LightGBM, base features, pinned (`lgbm_binary_pinned.csv`) | 0.5177 | 0.5178 |
-| **round-2 pipeline, no allocation identity, pinned (recommended)** | ~0.520 | **0.5208 ± 0.0044** |
+| round-2 pipeline (LightGBM), no allocation identity, pinned | ~0.520 | 0.5208 ± 0.0044 (out-of-time holdout 0.5226) |
+| **same features, CatBoost, pinned (recommended)** | ~0.522 | **0.5223 ± 0.004 (out-of-time holdout 0.5273-0.5277)** |
 | round-1 CatBoost + allocation encoding (`catboost_alloc_encoding.csv`) | 0.5185 (LightGBM equiv.) | 0.5156 → **0.5089 real** |
 
 ## Submission (round 1, superseded)

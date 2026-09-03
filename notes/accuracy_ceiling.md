@@ -201,11 +201,16 @@ loses 0.0014 in CV and gains ~0.002 out-of-time (≈1 SE); clipped-target MSE is
 regression is clearly worse (−0.0034 on the block, z −2.2); median-of-fold-models is noise;
 CatBoost on the same features is +0.001 across views, as in round 1. Nothing clears ~2 SE.
 
-**Recommendation:** `submissions/lgbm_final_nocat_mr_vol_fac_pinned.csv` (binary LightGBM,
-base + rolling + mean-reversion + volume-regime + factor features, no allocation identity,
-threshold pinned to the base rate; `src/qrt_replicate.py` spec `base,dum,miss,roll,mr,vol,fac`).
-Expected leaderboard: ~0.516-0.521 given the ±0.006 block noise. `lgbm_binary_pinned.csv` is
-the simpler fallback (same pipeline without mr/vol/fac).
+**Recommendation (updated after round 3):** `submissions/catboost_nocat_mr_vol_fac_pinned.csv`
+— CatBoostClassifier (depth 6, learning rate 0.015, 300 iterations, seeds 42 and 7 averaged) on
+the round-2 feature set (`src/qrt_replicate.py` spec `base,dum,miss,roll,mr,vol,fac`, no
+allocation identity), threshold pinned to the base rate (predicts 50.2% positive on test). It is
+the only round-3 change with a stable, >1.5 SE out-of-time gain: chronology holdout
+0.5257-0.5267 at threshold 0.5 and **0.5273-0.5277 pinned** at both model seeds (LightGBM:
+0.5227 / 0.5212), test-like block 0.5223 (LightGBM 0.5210), dense-day CV +0.0007-0.0012.
+Expected leaderboard: ~0.518-0.523 given the ±0.008 SE at 120 days.
+`lgbm_final_nocat_mr_vol_fac_pinned.csv` is the LightGBM version of the same pipeline (91%
+agreement); `lgbm_binary_pinned.csv` the simpler fallback (no mr/vol/fac).
 
 The published benchmark scores 0.5079 on the public leaderboard. The EDA (`notebooks/eda.ipynb`)
 found `sign(RET_1)` alone reaches 0.5189, and a first pass of feature engineering
