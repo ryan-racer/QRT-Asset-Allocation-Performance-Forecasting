@@ -37,6 +37,8 @@ liquidity, and turnover, predict the sign of its next-day return.
   `make_fit_predict`, `FEATURE_SETS`)
 - `submissions/lgbm_final_nocat_mr_vol_fac_pinned.csv`: **current recommended submission**
   (round-2 pipeline without allocation identity, threshold pinned to the base rate);
+  `lgbm_final_nocat_2seed_53pct.csv` is the same pipeline averaged over two seeds with the
+  threshold set to 53% positive (the out-of-time analysis' suggestion; 96% agreement);
   `lgbm_binary_pinned.csv` is the simpler fallback; `diag_*.csv` are leaderboard calibration probes
 - `data/raw/X_train.csv`: training input data (527,073 rows)
 - `data/raw/y_train.csv`: training target data
