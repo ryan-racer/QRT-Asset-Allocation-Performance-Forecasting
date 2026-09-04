@@ -212,7 +212,11 @@ path-shape and fold-safe memory features) covered **365 unique candidates**
 one) — against ~24 expected by chance — and the correlation between a candidate's CV z-score
 and its holdout z-score across all 365 is 0.017.** Theme-level blocks confirm it: the creative
 theme's "top 10" is +0.0010 / +0.0004, its full 126-feature block is −0.0026 on the holdout, and
-its 14 memory callables together are −0.0010. Whole families flat on both views: spectral/wavelet,
+its 14 memory callables together are −0.0010. The cross-sectional theme's 21 flagged
+candidates were re-screened on a second fold seed and a larger (25%) holdout: their CV
+z-scores correlate at −0.16 across seeds and their holdout z-scores at −0.29 across holdout
+sizes — the flags do not replicate even against themselves; the theme's full 126-feature
+block costs −0.0030 in CV and is flat out-of-time. Whole families flat on both views: spectral/wavelet,
 entropy/fractal/scaling, polynomial shape, sign runs/streaks, autocorrelation/variance ratios,
 vol levels/ratios, oscillators, group lead/lag, per-date dispersion, market-path stats,
 within-date kNN / "pairs" divergence, cross-sectional regressions, volume path shape/trend and
