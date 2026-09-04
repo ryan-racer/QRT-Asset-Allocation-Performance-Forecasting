@@ -50,9 +50,13 @@
 - Whole families that are flat on both views: spectral/wavelet, entropy/fractal/scaling,
   polynomial shape, sign runs/streaks, autocorrelation/variance ratios, vol levels/ratios,
   oscillators (RSI/Bollinger), group lead/lag, per-date dispersion, volume path shape/trend,
-  volume-return agreement. Still unscreened: the creative theme's fold-safe kNN path-similarity,
-  sign-pattern hit-rates and GMM regime callables (running), and parts of the cross-sectional
-  theme (market-path beta, within-date kNN).
+  volume-return agreement, market-path beta/residuals, within-date kNN and "pairs" divergence,
+  cross-sectional AR/regression coefficients. Fold-safe memory features are also flat or worse:
+  kNN on 20-day / 5-day path shape (k = 50 / 200, historical next-day sign rate of the nearest
+  training paths) −0.0009 to +0.0007; GMM-3 regime posteriors/state ≈ 0; sign-pattern / SAX
+  hit-rates mixed-sign (one single-view hit among 14); fold-fit logistic momentum scores on the
+  raw/normalised 20 returns −0.0030 to −0.0037 on the holdout (z −1.8 / −2.5). The
+  cross-sectional theme as a whole has corr(cv_z, ho_z) = −0.01 across 126 candidates.
 - Operational: don't run more than two screening processes at once on this machine (memory).
 
 ## Conventions

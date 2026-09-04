@@ -230,6 +230,15 @@ was used to select it. On three views that played no part in selection it does n
 
 Selection bias, not signal. Nothing from the screen is adopted; the recommendation below stands.
 
+Fold-safe "memory" features — the most novel candidates — are also flat or harmful on the
+holdout: kNN on the standardized 20-day / 5-day path (historical next-day sign rate of the
+50 / 200 nearest training paths, same-date rows excluded) −0.0009 to +0.0007; GMM-3 regime
+posteriors ≈ 0; sign-pattern and SAX-trigram hit-rates mixed-sign (one single-view hit among
+14 callables, the chance rate); a logistic "momentum score" fit on the raw or normalised 20
+returns −0.0030 / −0.0037 (z −1.8 / −2.5). Across the cross-sectional theme's 126 candidates,
+CV and holdout z-scores are uncorrelated (r = −0.01): the in-distribution and out-of-time
+views agree only in that neither contains a usable new feature.
+
 **Recommendation (updated after round 3):** `submissions/catboost_nocat_mr_vol_fac_pinned.csv`
 — CatBoostClassifier (depth 6, learning rate 0.015, 300 iterations, seeds 42 and 7 averaged) on
 the round-2 feature set (`src/qrt_replicate.py` spec `base,dum,miss,roll,mr,vol,fac`, no
