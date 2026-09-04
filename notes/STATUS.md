@@ -35,6 +35,24 @@
 - Label noise: a day's return is revised between target and next-day RET_1 (sign agreement
   88.5%) — a perfect model would score ~0.92, real models ~0.52-0.53.
 
+## Feature screening (2026-09-03, in progress)
+- Four themed screens through `src/qrt_screen.py` (ordinary technical, cross-sectional structure,
+  volume/turnover/missingness, creative path-shape + fold-safe memory features): **214 unique
+  candidates screened so far; 14 pass the lenient rule (same sign on both views, >= 1.5 SE on
+  one) vs ~14 expected by chance.** Table: `notes/screen_results.csv` (cv/ho paired deltas, z).
+- One coherent cluster is worth a confirmation pass (all <= 1.7 SE alone, consistently positive
+  on both views): market-breadth path stats (`XS_BREADTH_MEAN20/STD20` = mean/std over the 20
+  lag-days of the share of allocations positive), older-window momentum (`SKIP_MOM_6_20`,
+  `SKIP_MOM_11_20`, `STOCH_20`), cross-sectional skew/kurtosis of `RET_1`. Pending: block test
+  on seed 1 and the holdout, and in CatBoost.
+- Whole families that are flat on both views: spectral/wavelet, entropy/fractal/scaling,
+  polynomial shape, sign runs/streaks, autocorrelation/variance ratios, vol levels/ratios,
+  oscillators (RSI/Bollinger), group lead/lag, per-date dispersion, volume path shape/trend,
+  volume-return agreement. Still unscreened: the creative theme's fold-safe kNN path-similarity,
+  sign-pattern hit-rates and GMM regime callables (running), and parts of the cross-sectional
+  theme (market-path beta, within-date kNN).
+- Operational: don't run more than two screening processes at once on this machine (memory).
+
 ## Conventions
 - Scratch/experiments outside the repo (session scratchpad or /tmp); only validated code in `src/`.
 - Submissions in `submissions/` with a descriptive name; record leaderboard scores in
