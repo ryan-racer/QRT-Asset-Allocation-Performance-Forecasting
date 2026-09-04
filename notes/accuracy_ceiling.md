@@ -207,9 +207,12 @@ CatBoost on the same features is +0.001 across views, as in round 1. Nothing cle
 (3 TS-grouped folds, 150 rounds) and reports paired day-clustered deltas on dense-day CV and on
 the chronology holdout; a random-noise control reads as noise on both. Four themed screens
 (ordinary technical; cross-sectional market structure; volume/turnover/missingness; creative
-path-shape and fold-safe memory features) covered **214+ unique candidates**
-(`notes/screen_results.csv`). **14 pass the lenient rule (same sign on both views, >= 1.5 SE on
-one) — against ~14 expected by chance.** Whole families flat on both views: spectral/wavelet,
+path-shape and fold-safe memory features) covered **365 unique candidates**
+(`notes/screen_results.csv`). **18 pass the lenient rule (same sign on both views, >= 1.5 SE on
+one) — against ~24 expected by chance — and the correlation between a candidate's CV z-score
+and its holdout z-score across all 365 is 0.017.** Theme-level blocks confirm it: the creative
+theme's "top 10" is +0.0010 / +0.0004, its full 126-feature block is −0.0026 on the holdout, and
+its 14 memory callables together are −0.0010. Whole families flat on both views: spectral/wavelet,
 entropy/fractal/scaling, polynomial shape, sign runs/streaks, autocorrelation/variance ratios,
 vol levels/ratios, oscillators, group lead/lag, per-date dispersion, market-path stats,
 within-date kNN / "pairs" divergence, cross-sectional regressions, volume path shape/trend and

@@ -35,11 +35,12 @@
 - Label noise: a day's return is revised between target and next-day RET_1 (sign agreement
   88.5%) — a perfect model would score ~0.92, real models ~0.52-0.53.
 
-## Feature screening (2026-09-03, in progress)
+## Feature screening (2026-09-03, complete)
 - Four themed screens through `src/qrt_screen.py` (ordinary technical, cross-sectional structure,
-  volume/turnover/missingness, creative path-shape + fold-safe memory features): **214 unique
-  candidates screened so far; 14 pass the lenient rule (same sign on both views, >= 1.5 SE on
-  one) vs ~14 expected by chance.** Table: `notes/screen_results.csv` (cv/ho paired deltas, z).
+  volume/turnover/missingness, creative path-shape + fold-safe memory features): **365 unique
+  candidates screened; 18 pass the lenient rule (same sign on both views, >= 1.5 SE on one) vs
+  ~24 expected by chance; corr(CV z, holdout z) across all candidates = 0.017.** Table:
+  `notes/screen_results.csv` (cv/ho paired deltas, z). Nothing adopted.
 - The one coherent cluster (market-breadth path stats `XS_BREADTH_MEAN20/STD20`, older-window
   momentum `SKIP_MOM_6_20/11_20`, `STOCH_20`, cross-sectional skew/kurtosis of `RET_1`,
   `XS_CORR_GPATH_G4`) block-tested at **+0.0050 ± 0.0023 on the chronology holdout** — but that
