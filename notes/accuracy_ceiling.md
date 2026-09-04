@@ -201,6 +201,35 @@ loses 0.0014 in CV and gains ~0.002 out-of-time (≈1 SE); clipped-target MSE is
 regression is clearly worse (−0.0034 on the block, z −2.2); median-of-fold-models is noise;
 CatBoost on the same features is +0.001 across views, as in round 1. Nothing clears ~2 SE.
 
+## Round 4 (2026-09-03): a wide feature screen — 200+ candidates, nothing transfers
+
+`src/qrt_screen.py` screens each candidate on top of the round-2 base with a fast LightGBM
+(3 TS-grouped folds, 150 rounds) and reports paired day-clustered deltas on dense-day CV and on
+the chronology holdout; a random-noise control reads as noise on both. Four themed screens
+(ordinary technical; cross-sectional market structure; volume/turnover/missingness; creative
+path-shape and fold-safe memory features) covered **214+ unique candidates**
+(`notes/screen_results.csv`). **14 pass the lenient rule (same sign on both views, >= 1.5 SE on
+one) — against ~14 expected by chance.** Whole families flat on both views: spectral/wavelet,
+entropy/fractal/scaling, polynomial shape, sign runs/streaks, autocorrelation/variance ratios,
+vol levels/ratios, oscillators, group lead/lag, per-date dispersion, market-path stats,
+within-date kNN / "pairs" divergence, cross-sectional regressions, volume path shape/trend and
+volume-return agreement.
+
+The one coherent cluster — market-breadth path stats (mean/std over the 20 lag-days of the
+share of allocations positive), older-window momentum (`mean(RET_6..20)`, `mean(RET_11..20)`,
+path position in range), cross-sectional skew/kurtosis of `RET_1`, correlation with GROUP 4's
+mean path — block-tests at +0.0050 ± 0.0023 (z 2.1) on the chronology holdout, but that holdout
+was used to select it. On three views that played no part in selection it does not replicate
+(full-strength models, paired deltas):
+
+| view | LightGBM +cluster | CatBoost +cluster (xs part) |
+|---|---|---|
+| adversarial pseudo-test block (250 dates) | +0.0022 ± 0.0021 (z 1.0); all 11 feats +0.0036 (z 1.8) | +0.0012 ± 0.0016 |
+| rolling block 1 (earlier chronology) | +0.0010 ± 0.0017 | −0.0002 ± 0.0012 |
+| rolling block 2 | +0.0007 ± 0.0022 | **−0.0040 ± 0.0016 (z −2.5)** |
+
+Selection bias, not signal. Nothing from the screen is adopted; the recommendation below stands.
+
 **Recommendation (updated after round 3):** `submissions/catboost_nocat_mr_vol_fac_pinned.csv`
 — CatBoostClassifier (depth 6, learning rate 0.015, 300 iterations, seeds 42 and 7 averaged) on
 the round-2 feature set (`src/qrt_replicate.py` spec `base,dum,miss,roll,mr,vol,fac`, no

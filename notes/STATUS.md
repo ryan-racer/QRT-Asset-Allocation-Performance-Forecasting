@@ -40,11 +40,13 @@
   volume/turnover/missingness, creative path-shape + fold-safe memory features): **214 unique
   candidates screened so far; 14 pass the lenient rule (same sign on both views, >= 1.5 SE on
   one) vs ~14 expected by chance.** Table: `notes/screen_results.csv` (cv/ho paired deltas, z).
-- One coherent cluster is worth a confirmation pass (all <= 1.7 SE alone, consistently positive
-  on both views): market-breadth path stats (`XS_BREADTH_MEAN20/STD20` = mean/std over the 20
-  lag-days of the share of allocations positive), older-window momentum (`SKIP_MOM_6_20`,
-  `SKIP_MOM_11_20`, `STOCH_20`), cross-sectional skew/kurtosis of `RET_1`. Pending: block test
-  on seed 1 and the holdout, and in CatBoost.
+- The one coherent cluster (market-breadth path stats `XS_BREADTH_MEAN20/STD20`, older-window
+  momentum `SKIP_MOM_6_20/11_20`, `STOCH_20`, cross-sectional skew/kurtosis of `RET_1`,
+  `XS_CORR_GPATH_G4`) block-tested at **+0.0050 ± 0.0023 on the chronology holdout** — but that
+  holdout was used to select it. On views that played no part in selection it does not
+  replicate: pseudo-test block +0.0022 (z 1.0, LightGBM) / +0.0012 (CatBoost); rolling blocks 1
+  and 2 ≈ 0 for LightGBM and **−0.0040 (z −2.5) for CatBoost** on block 2. Verdict: selection
+  bias, not a feature. Nothing from the screen is adopted.
 - Whole families that are flat on both views: spectral/wavelet, entropy/fractal/scaling,
   polynomial shape, sign runs/streaks, autocorrelation/variance ratios, vol levels/ratios,
   oscillators (RSI/Bollinger), group lead/lag, per-date dispersion, volume path shape/trend,
